@@ -8,7 +8,7 @@ struct AsciiGif {
 
 fn print_gif(gif: &AsciiGif) {
     let mut counter: i32 = 0;
-    while true {
+    loop {
         println!("\x1b[H{}", gif.text[counter as usize]);
         counter += 1;
         if (counter as usize) > gif.text.len() - 1 {
@@ -34,7 +34,7 @@ fn open_gif() {
     }
     let out_gif = AsciiGif {
         text: frames,
-        frame_time: time::Duration::from_millis(1000),
+        frame_time: time::Duration::from_millis(200),
     };
     print_gif(&out_gif)
 }
@@ -86,8 +86,11 @@ fn resize_image_simple(
             let index_br = index_bl + 1; // bottom-right
 
             // Calculate the average value of the neighboring pixels
-            let avg_value: u8 =
-                (frame[index_tl] + frame[index_tr] + frame[index_bl] + frame[index_br]) / 4;
+            let avg_value: u8 = ((frame[index_tl] as u16
+                + frame[index_tr] as u16
+                + frame[index_bl] as u16
+                + frame[index_br] as u16)
+                / 4) as u8;
 
             // Push the average value to the resized image
             new_image.push(avg_value);
