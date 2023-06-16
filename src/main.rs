@@ -87,18 +87,7 @@ fn calc_next_frame(
         let index = start
             + (inner_line % (new_frame_width as usize))
             + (last_frame_width as usize * (inner_line / new_frame_width as usize));
-        /*
-        println!(
-            "pixel ({} / {}) \n inserting at: start {} + inner_line {} + line_stuff {} = {}",
-            inner_line,
-            new_frame_data.len(),
-            start,
-            inner_line % (new_frame_width as usize),
-            (last_frame_width as usize * (inner_line / new_frame_width as usize)),
-            index
-        ); */
         out_frame[index] = pixel.clone();
-        //println!("{:?}", pixel);
         inner_line += 1;
     }
     println!("end size : {}\n\n", out_frame.len());
