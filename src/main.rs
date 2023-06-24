@@ -40,7 +40,6 @@ fn print_gif(gif: &AsciiGif) {
     loop {
         // repeat until ctrl-c'd, this should be upgraded to be a bit nicer perhaps?
         // TODO: Upgrade loop to work a bit nicer in cmd prompt
-        // It seems to be that there is a lot of left over stuff
         print!(
             "\x1b[H{}",
             (gif.text[counter as usize])
@@ -53,7 +52,6 @@ fn print_gif(gif: &AsciiGif) {
             counter = 0;
         }
         thread::sleep(gif.frame_time)
-        // wait for frame time
     }
 }
 
@@ -67,21 +65,7 @@ fn calc_next_frame(
 ) -> Vec<[u8; 4]> {
     // lets create the new frame
     let mut out_frame: Vec<[u8; 4]> = last_frame.clone();
-    println!(
-        "Frame to fill : {} \nFrame to use for cover : {}",
-        last_frame.len(),
-        new_frame_data.len()
-    );
-    println!(
-        "Top distance : {} \nLeft Distance : {}\nWidth : {}",
-        dist_top, dist_left, last_frame_width
-    );
     let start = (dist_top as usize * (last_frame_width as usize)) + dist_left as usize;
-    println!(
-        "Start : {}\nSpace remaining : {}",
-        start,
-        last_frame.len() - start
-    );
     let mut inner_line: usize = 0;
     for pixel in new_frame_data.iter() {
         let index = start
@@ -90,7 +74,6 @@ fn calc_next_frame(
         out_frame[index] = pixel.clone();
         inner_line += 1;
     }
-    println!("end size : {}\n\n", out_frame.len());
     return out_frame;
 }
 
@@ -109,7 +92,16 @@ fn open_gif(args: Args) {
     let mut decoder = decoder.read_info(file).unwrap(); // Some more setup
     let mut frames: Vec<String> = vec![];
 
-    let (out_width, out_height) = get_screen_dimensions();
+    let (screen_width, screen_height) = get_screen_dimensions();
+    let out_width = match args.width {
+        Some(x) => x,
+        None => screen_width,
+    };
+    let out_height = match args.height {
+        Some(x) => x,
+        None => screen_height,
+    };
+
     let mut delay: u16 = 0;
     let mut last_frame: Vec<[u8; 4]> = vec![];
     let mut last_frame_width: u16 = 0;
@@ -125,7 +117,7 @@ fn open_gif(args: Args) {
 
         let (width, height) = get_dimensions(frame);
         delay = frame.delay;
-        // save this frame so we can use it if the next frame needs it
+        println!("{}", frame.interlaced);
         if last_frame_height != 0 {
             fixed_frame = calc_next_frame(
                 &fixed_frame,
@@ -180,6 +172,21 @@ fn new_lines(string: String, width: usize) -> String {
         .map(|chunk| chunk.iter().collect::<String>())
         .collect::<Vec<String>>()
         .join("\n")
+}
+
+// Ok convolution information
+//(Input height + padding height top + padding height bottom - kernel height) / (stride height) + 1
+// ( in_h + p - k_h ) / (s + 1) = o
+//
+fn resize_image_convolution(
+    frame: &Vec<u8>,
+    in_width: i32,
+    in_height: i32,
+    conv_width: i32,
+    conv_height: i32,
+) -> Vec<u8> {
+    let new_vec = vec![];
+    return new_vec;
 }
 
 fn resize_image_simple(

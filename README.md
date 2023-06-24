@@ -47,3 +47,17 @@ We all love a good todo list, and this one is no different
 [] - Upscaling for images smaller than terminal resolution
 [] - Using half height block and background / foreground colour to double vertical
 resolution at a loss of the "ascii" aestetic
+
+## # Vent
+
+Hey weirdo reading this, this my unfiltered thoughts whilst writing this, if you
+are reading this then you are probably going back through the commit log because
+I should be deleting this quite regularly. So if you are on the current version
+try running with the test gif "egg.gif" that output looks interlaced, but the
+gif crate is telling me no. I'm guessing this might be a bug, I'm not exactly sure
+last time I thought something was a bug turned out it was just my resize function
+being silly (what I passed it) so I'm guessing that ain't right. Even weirder are
+the black boxes in "happy.gif" This is probably caused by the function that's been
+causing me so much greif recently, that damned "calc_next_frame"! because it seems
+to be exactly the sort of stuff that should handel, boxes like that. But why isn't
+it getting those frames, why do other gifs work so well? WHAT IS GOING ON HERE!
