@@ -1,7 +1,6 @@
 use clap::Parser;
 use gif::{self, Frame};
-use std::{fs::File, path::PathBuf, thread, time};
-use term_size;
+use std::{fs::File, thread, time};
 
 /// A simple program for converting gifs to ascii art
 #[derive(Parser, Debug)]
@@ -27,6 +26,8 @@ struct Args {
     time: Option<u64>,
 }
 
+type ColourPixel = [u8; 4];
+
 /// Ascigif is for storing acsii versions of gifs
 struct AsciiGif {
     /// This is how we are going to store the gif when it has been converted, this
@@ -42,9 +43,7 @@ fn print_gif(gif: &AsciiGif) {
         // TODO: Upgrade loop to work a bit nicer in cmd prompt
         print!(
             "\x1b[H{}",
-            (gif.text[counter as usize])
-                .trim_end_matches("\n")
-                .to_string()
+            (gif.text[counter as usize]).trim_end_matches('\n')
         ); // prints the gif (the first set of
            // characters is the go to the start of console character)
         counter += 1;
@@ -56,25 +55,23 @@ fn print_gif(gif: &AsciiGif) {
 }
 
 fn calc_next_frame(
-    new_frame_data: &Vec<[u8; 4]>,
+    new_frame_data: &[ColourPixel],
     new_frame_width: u16,
     dist_top: u16,
     dist_left: u16,
-    last_frame: &Vec<[u8; 4]>,
+    last_frame: &[ColourPixel],
     last_frame_width: u16,
-) -> Vec<[u8; 4]> {
+) -> Vec<ColourPixel> {
     // lets create the new frame
-    let mut out_frame: Vec<[u8; 4]> = last_frame.clone();
+    let mut out_frame: Vec<ColourPixel> = last_frame.to_owned();
     let start = (dist_top as usize * (last_frame_width as usize)) + dist_left as usize;
-    let mut inner_line: usize = 0;
-    for pixel in new_frame_data.iter() {
+    for (inner_line, pixel) in new_frame_data.iter().enumerate() {
         let index = start
             + (inner_line % (new_frame_width as usize))
             + (last_frame_width as usize * (inner_line / new_frame_width as usize));
-        out_frame[index] = pixel.clone();
-        inner_line += 1;
+        out_frame[index] = *pixel;
     }
-    return out_frame;
+    out_frame
 }
 
 /// This is the main important function at the moment, maybe name should reflect that better?
@@ -103,12 +100,15 @@ fn open_gif(args: Args) {
     };
 
     let mut delay: u16 = 0;
-    let mut last_frame: Vec<[u8; 4]> = vec![];
+    let mut last_frame: Vec<ColourPixel> = vec![];
     let mut last_frame_width: u16 = 0;
     let mut last_frame_height: u16 = 0;
 
-    let mut gif_decoded: Vec<Frame> = vec![];
+    let mut gif_decoded: Vec<Frame> = Vec::with_capacity(frames.len());
     while let Some(frame) = decoder.read_next_frame().unwrap() {
+        // This is an attempt to move away from streaming the bits in, which might have been
+        // causing problems but I'm not really sure that it was, technically increases the time it
+        // takes but it's neglegable I suppose
         gif_decoded.push(frame.clone());
     }
 
@@ -117,7 +117,7 @@ fn open_gif(args: Args) {
 
         let (width, height) = get_dimensions(frame);
         delay = frame.delay;
-        println!("{}", frame.interlaced);
+        println!("{}", frame.interlaced); // Maybe it's frame interlacing
         if last_frame_height != 0 {
             fixed_frame = calc_next_frame(
                 &fixed_frame,
@@ -141,15 +141,15 @@ fn open_gif(args: Args) {
 
         let resized = resize_image_simple(
             &lum,
-            last_frame_width as i32,
-            last_frame_height as i32,
-            out_width as i32,
-            out_height as i32,
+            last_frame_width,
+            last_frame_height,
+            out_width,
+            out_height,
         );
 
         frames.push(new_lines(
             String::from_utf8(conv_lum_char(resized)).unwrap(),
-            out_width as usize,
+            out_width,
         ));
     }
     let out_gif = AsciiGif {
@@ -159,7 +159,7 @@ fn open_gif(args: Args) {
             None => delay as u64 * 10,
         }),
     };
-    if args.print == true {
+    if args.print {
         print_gif(&out_gif)
     }
 }
@@ -179,22 +179,22 @@ fn new_lines(string: String, width: usize) -> String {
 // ( in_h + p - k_h ) / (s + 1) = o
 //
 fn resize_image_convolution(
-    frame: &Vec<u8>,
+    frame: &[u8],
     in_width: i32,
     in_height: i32,
     conv_width: i32,
     conv_height: i32,
 ) -> Vec<u8> {
-    let new_vec = vec![];
-    return new_vec;
+    //let new_vec: Vec<u8> = vec![];
+    todo!();
 }
 
 fn resize_image_simple(
-    frame: &Vec<u8>,
-    in_width: i32,
-    in_height: i32,
-    out_width: i32,
-    out_height: i32,
+    frame: &[u8],
+    in_width: u16,
+    in_height: u16,
+    out_width: usize,
+    out_height: usize,
 ) -> Vec<u8> {
     // I basically copied this from chatgpt (damn it makes me worse at coding) but its easy
     // I really want to update it. Make is ALOT better, currently it doesn't like it when the
@@ -205,7 +205,7 @@ fn resize_image_simple(
     //println!("{}", x_factor);
     let y_factor: f32 = in_height as f32 / out_height as f32;
     //println!("{}", y_factor);
-    let mut new_image = vec![];
+    let mut new_image = Vec::with_capacity(out_width * out_height);
 
     // println!("Frame size {}", frame.len());
     // println!("Input est size {}", in_width * in_height);
@@ -238,20 +238,20 @@ fn resize_image_simple(
             new_image.push(avg_value);
         }
     }
-    return new_image;
+    new_image
 }
 
-fn fix_gif(frame: &Frame) -> Vec<[u8; 4]> {
+fn fix_gif(frame: &Frame) -> Vec<ColourPixel> {
     // This makes it so each pixel is seperate, currently it gets sent
     // [r,g,b,a,r,g,b,a,...,a] I want it to be [[r,g,b,a],[r,g,b,a],...,a]]
     // breaking them up into pixels
-    let mut out: Vec<[u8; 4]> = vec![];
+    let mut out: Vec<ColourPixel> = Vec::with_capacity(frame.buffer.len() / 4);
     for pixel in frame.buffer.chunks(4) {
-        let mut array: [u8; 4] = [0; 4];
+        let mut array: ColourPixel = [0; 4];
         array.copy_from_slice(pixel);
         out.push(array);
     }
-    return out;
+    out
 }
 
 fn conv_lum_char(frame: Vec<u8>) -> Vec<u8> {
@@ -267,41 +267,35 @@ fn conv_lum_char(frame: Vec<u8>) -> Vec<u8> {
 }
 
 // Some notes the new function _2 is much better, but maybe still offer this function as an option
-fn conv_frame_lum(frame: Vec<[u8; 4]>) -> Vec<u8> {
+fn conv_frame_lum(frame: Vec<ColourPixel>) -> Vec<u8> {
     // calculates the average of rgb (it's a little
     // silly but helps when dealing with some images)
     frame
         .iter()
-        .filter_map(|chunk| {
-            if chunk.len() == 4 {
-                let sum: u16 = u16::from(chunk[0]) + u16::from(chunk[1]) + u16::from(chunk[2]);
-                Some((sum / 3).try_into().unwrap())
-            } else {
-                None
-            }
+        .map(|chunk| {
+            (chunk[0..2].iter().map(|&x| x as u16).sum::<u16>() / 3)
+                .try_into()
+                .unwrap()
         })
         .collect()
 }
 
-fn conv_frame_lum_2(frame: Vec<[u8; 4]>) -> Vec<u8> {
+fn conv_frame_lum_2(frame: Vec<ColourPixel>) -> Vec<u8> {
     // This is how luminacnce is ACTUALLY calculated so maybe it should be the default (with the
     // function name atleast) it is currently default with the command line arguments
     frame
         .iter()
-        .filter_map(|chunk| Some(std::cmp::max(chunk[0], std::cmp::max(chunk[1], chunk[2]))))
+        .map(|chunk| *chunk[0..2].iter().max().unwrap())
         .collect()
 }
 
 fn get_dimensions(frame: &Frame) -> (u16, u16) {
-    return (frame.width, frame.height);
+    (frame.width, frame.height)
 }
 
 fn get_screen_dimensions() -> (usize, usize) {
-    if let Some((w, h)) = term_size::dimensions() {
-        return (w, h);
-    } else {
-        panic!("Couldn't get the terminal size, please enter in output sizes manually");
-    }
+    term_size::dimensions()
+        .expect("Couldn't get the terminal size, please enter output sizes manually")
 }
 
 fn main() {
