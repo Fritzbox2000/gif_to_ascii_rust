@@ -277,13 +277,10 @@ fn conv_frame_lum(frame: Vec<ColourPixel>) -> Vec<u8> {
     // silly but helps when dealing with some images)
     frame
         .iter()
-        .filter_map(|chunk| {
-            if chunk.len() == 4 {
-                let sum: u16 = u16::from(chunk[0]) + u16::from(chunk[1]) + u16::from(chunk[2]);
-                Some((sum / 3).try_into().unwrap())
-            } else {
-                None
-            }
+        .map(|chunk| {
+            (chunk[0..2].iter().map(|&x| x as u16).sum::<u16>() / 3)
+                .try_into()
+                .unwrap()
         })
         .collect()
 }
@@ -293,7 +290,7 @@ fn conv_frame_lum_2(frame: Vec<ColourPixel>) -> Vec<u8> {
     // function name atleast) it is currently default with the command line arguments
     frame
         .iter()
-        .filter_map(|chunk| Some(std::cmp::max(chunk[0], std::cmp::max(chunk[1], chunk[2]))))
+        .map(|chunk| *chunk[0..2].iter().max().unwrap())
         .collect()
 }
 
