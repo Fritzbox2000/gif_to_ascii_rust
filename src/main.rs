@@ -27,6 +27,8 @@ struct Args {
     time: Option<u64>,
 }
 
+type ColourPixel = [u8; 4];
+
 /// Ascigif is for storing acsii versions of gifs
 struct AsciiGif {
     /// This is how we are going to store the gif when it has been converted, this
@@ -56,15 +58,15 @@ fn print_gif(gif: &AsciiGif) {
 }
 
 fn calc_next_frame(
-    new_frame_data: &Vec<[u8; 4]>,
+    new_frame_data: &Vec<ColourPixel>,
     new_frame_width: u16,
     dist_top: u16,
     dist_left: u16,
-    last_frame: &Vec<[u8; 4]>,
+    last_frame: &Vec<ColourPixel>,
     last_frame_width: u16,
-) -> Vec<[u8; 4]> {
+) -> Vec<ColourPixel> {
     // lets create the new frame
-    let mut out_frame: Vec<[u8; 4]> = last_frame.clone();
+    let mut out_frame: Vec<ColourPixel> = last_frame.clone();
     let start = (dist_top as usize * (last_frame_width as usize)) + dist_left as usize;
     let mut inner_line: usize = 0;
     for pixel in new_frame_data.iter() {
@@ -103,7 +105,7 @@ fn open_gif(args: Args) {
     };
 
     let mut delay: u16 = 0;
-    let mut last_frame: Vec<[u8; 4]> = vec![];
+    let mut last_frame: Vec<ColourPixel> = vec![];
     let mut last_frame_width: u16 = 0;
     let mut last_frame_height: u16 = 0;
 
@@ -117,7 +119,7 @@ fn open_gif(args: Args) {
 
         let (width, height) = get_dimensions(frame);
         delay = frame.delay;
-        println!("{}", frame.interlaced);
+        println!("{}", frame.interlaced); // Maybe it's frame interlacing
         if last_frame_height != 0 {
             fixed_frame = calc_next_frame(
                 &fixed_frame,
@@ -241,13 +243,13 @@ fn resize_image_simple(
     return new_image;
 }
 
-fn fix_gif(frame: &Frame) -> Vec<[u8; 4]> {
+fn fix_gif(frame: &Frame) -> Vec<ColourPixel> {
     // This makes it so each pixel is seperate, currently it gets sent
     // [r,g,b,a,r,g,b,a,...,a] I want it to be [[r,g,b,a],[r,g,b,a],...,a]]
     // breaking them up into pixels
-    let mut out: Vec<[u8; 4]> = vec![];
+    let mut out: Vec<ColourPixel> = vec![];
     for pixel in frame.buffer.chunks(4) {
-        let mut array: [u8; 4] = [0; 4];
+        let mut array: ColourPixel = [0; 4];
         array.copy_from_slice(pixel);
         out.push(array);
     }
@@ -267,7 +269,7 @@ fn conv_lum_char(frame: Vec<u8>) -> Vec<u8> {
 }
 
 // Some notes the new function _2 is much better, but maybe still offer this function as an option
-fn conv_frame_lum(frame: Vec<[u8; 4]>) -> Vec<u8> {
+fn conv_frame_lum(frame: Vec<ColourPixel>) -> Vec<u8> {
     // calculates the average of rgb (it's a little
     // silly but helps when dealing with some images)
     frame
@@ -283,7 +285,7 @@ fn conv_frame_lum(frame: Vec<[u8; 4]>) -> Vec<u8> {
         .collect()
 }
 
-fn conv_frame_lum_2(frame: Vec<[u8; 4]>) -> Vec<u8> {
+fn conv_frame_lum_2(frame: Vec<ColourPixel>) -> Vec<u8> {
     // This is how luminacnce is ACTUALLY calculated so maybe it should be the default (with the
     // function name atleast) it is currently default with the command line arguments
     frame
