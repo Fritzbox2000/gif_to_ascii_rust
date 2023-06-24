@@ -187,8 +187,8 @@ fn resize_image_convolution(
     conv_width: i32,
     conv_height: i32,
 ) -> Vec<u8> {
-    let new_vec = vec![];
-    return new_vec;
+    //let new_vec: Vec<u8> = vec![];
+    return todo!();
 }
 
 fn resize_image_simple(
