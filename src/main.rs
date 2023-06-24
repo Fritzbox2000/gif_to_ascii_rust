@@ -1,6 +1,6 @@
 use clap::Parser;
 use gif::{self, Frame};
-use std::{fs::File, path::PathBuf, thread, time};
+use std::{fs::File, thread, time};
 use term_size;
 
 /// A simple program for converting gifs to ascii art
@@ -109,8 +109,11 @@ fn open_gif(args: Args) {
     let mut last_frame_width: u16 = 0;
     let mut last_frame_height: u16 = 0;
 
-    let mut gif_decoded: Vec<Frame> = vec![];
+    let mut gif_decoded: Vec<Frame> = Vec::with_capacity(frames.len());
     while let Some(frame) = decoder.read_next_frame().unwrap() {
+        // This is an attempt to move away from streaming the bits in, which might have been
+        // causing problems but I'm not really sure that it was, technically increases the time it
+        // takes but it's neglegable I suppose
         gif_decoded.push(frame.clone());
     }
 
@@ -143,10 +146,10 @@ fn open_gif(args: Args) {
 
         let resized = resize_image_simple(
             &lum,
-            last_frame_width as i32,
-            last_frame_height as i32,
-            out_width as i32,
-            out_height as i32,
+            last_frame_width,
+            last_frame_height,
+            out_width,
+            out_height,
         );
 
         frames.push(new_lines(
@@ -188,15 +191,15 @@ fn resize_image_convolution(
     conv_height: i32,
 ) -> Vec<u8> {
     //let new_vec: Vec<u8> = vec![];
-    return todo!();
+    todo!();
 }
 
 fn resize_image_simple(
     frame: &Vec<u8>,
-    in_width: i32,
-    in_height: i32,
-    out_width: i32,
-    out_height: i32,
+    in_width: u16,
+    in_height: u16,
+    out_width: usize,
+    out_height: usize,
 ) -> Vec<u8> {
     // I basically copied this from chatgpt (damn it makes me worse at coding) but its easy
     // I really want to update it. Make is ALOT better, currently it doesn't like it when the
@@ -207,7 +210,7 @@ fn resize_image_simple(
     //println!("{}", x_factor);
     let y_factor: f32 = in_height as f32 / out_height as f32;
     //println!("{}", y_factor);
-    let mut new_image = vec![];
+    let mut new_image = Vec::with_capacity(out_width * out_height);
 
     // println!("Frame size {}", frame.len());
     // println!("Input est size {}", in_width * in_height);
@@ -247,7 +250,7 @@ fn fix_gif(frame: &Frame) -> Vec<ColourPixel> {
     // This makes it so each pixel is seperate, currently it gets sent
     // [r,g,b,a,r,g,b,a,...,a] I want it to be [[r,g,b,a],[r,g,b,a],...,a]]
     // breaking them up into pixels
-    let mut out: Vec<ColourPixel> = vec![];
+    let mut out: Vec<ColourPixel> = Vec::with_capacity(frame.buffer.len() / 4);
     for pixel in frame.buffer.chunks(4) {
         let mut array: ColourPixel = [0; 4];
         array.copy_from_slice(pixel);
@@ -299,11 +302,8 @@ fn get_dimensions(frame: &Frame) -> (u16, u16) {
 }
 
 fn get_screen_dimensions() -> (usize, usize) {
-    if let Some((w, h)) = term_size::dimensions() {
-        return (w, h);
-    } else {
-        panic!("Couldn't get the terminal size, please enter in output sizes manually");
-    }
+    return term_size::dimensions()
+        .expect("Couldn't get the terminal size, please enter output sizes manually");
 }
 
 fn main() {
