@@ -1,7 +1,7 @@
 use clap::Parser;
-use gif::{self, Frame};
+use gif::{self, Decoder, Frame};
+use image::*;
 use std::{fs::File, thread, time};
-
 /// A simple program for converting gifs to ascii art
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -18,7 +18,7 @@ struct Args {
     /// Whether to print the gif in the terminal or not
     #[arg(short, long, default_value = "false", default_missing_value = "true")]
     print: bool,
-    /// Use a different (better for some images) luminacnce calculator for black and white
+    /// Use a different (better for some images) luminance calculator for black and white
     #[arg(short, long, default_value = "false", default_missing_value = "true")]
     luminance: bool,
     /// The time between frames
@@ -73,20 +73,8 @@ fn calc_next_frame(
     }
     out_frame
 }
-
-/// This is the main important function at the moment, maybe name should reflect that better?
-fn open_gif(args: Args) {
-    // Ok so TODO to clean up this function:
-    // - generally probably should break down a bunch of things into sub functions.
-    // - write the gif to a vector of frames before iterating over it
-
-    // A bunch of setup code
-    let mut decoder = gif::DecodeOptions::new();
-    decoder.set_color_output(gif::ColorOutput::RGBA);
-
-    let file = File::open(args.file).unwrap();
-
-    let mut decoder = decoder.read_info(file).unwrap(); // Some more setup
+fn main_loop(args: Args) {
+    let mut decoder = open_gif(&args);
     let mut frames: Vec<String> = vec![];
 
     let (screen_width, screen_height) = get_screen_dimensions();
@@ -162,6 +150,14 @@ fn open_gif(args: Args) {
     if args.print {
         print_gif(&out_gif)
     }
+}
+/// This is the main important function at the moment, maybe name should reflect that better?
+fn open_gif(args: &Args) -> Decoder<File> {
+    let mut decoder = gif::DecodeOptions::new();
+    decoder.set_color_output(gif::ColorOutput::RGBA);
+    let file = File::open(args.file.clone()).unwrap();
+
+    return decoder.read_info(file).unwrap(); // Some more setup
 }
 
 fn new_lines(string: String, width: usize) -> String {
@@ -302,8 +298,8 @@ fn main() {
     // Outline:
     // Convert image to correct size
     //      Maybe calculate a good size for image
-    // If Black and White (Currently always) convert to luminacnce
-    // Convert luminacnce to ascii characters
+    // If Black and White (Currently always) convert to luminance
+    // Convert luminance to ascii characters
     // Print out
     // Save to file
     // OK now lets write a TODO
@@ -314,7 +310,7 @@ fn main() {
     // different downsampling methods
     //
     let args = Args::parse();
-    open_gif(args);
+    main_loop(args);
 }
 
 #[cfg(test)]
