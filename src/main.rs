@@ -20,7 +20,7 @@ struct Args {
     print: bool,
     /// Use a different (better for some images) luminacnce calculator for black and white
     #[arg(short, long, default_value = "false", default_missing_value = "true")]
-    luminacnce: bool,
+    luminance: bool,
     /// The time between frames
     #[arg(short, long)]
     time: Option<u64>,
@@ -28,7 +28,7 @@ struct Args {
 
 type ColourPixel = [u8; 4];
 
-/// Ascigif is for storing acsii versions of gifs
+/// Asciigif is for storing ascii versions of gifs
 struct AsciiGif {
     /// This is how we are going to store the gif when it has been converted, this
     /// should be used for stuff like saving the gif and playing it back and stuff
@@ -78,7 +78,7 @@ fn calc_next_frame(
 fn open_gif(args: Args) {
     // Ok so TODO to clean up this function:
     // - generally probably should break down a bunch of things into sub functions.
-    // - write the gif to a vector of frames before itterating over it
+    // - write the gif to a vector of frames before iterating over it
 
     // A bunch of setup code
     let mut decoder = gif::DecodeOptions::new();
@@ -108,7 +108,7 @@ fn open_gif(args: Args) {
     while let Some(frame) = decoder.read_next_frame().unwrap() {
         // This is an attempt to move away from streaming the bits in, which might have been
         // causing problems but I'm not really sure that it was, technically increases the time it
-        // takes but it's neglegable I suppose
+        // takes but it's negligible I suppose
         gif_decoded.push(frame.clone());
     }
 
@@ -134,7 +134,7 @@ fn open_gif(args: Args) {
 
         last_frame = fixed_frame.clone();
 
-        let lum = match args.luminacnce {
+        let lum = match args.luminance {
             true => conv_frame_lum(fixed_frame),
             false => conv_frame_lum_2(fixed_frame),
         };
@@ -197,7 +197,7 @@ fn resize_image_simple(
     out_height: usize,
 ) -> Vec<u8> {
     // I basically copied this from chatgpt (damn it makes me worse at coding) but its easy
-    // I really want to update it. Make is ALOT better, currently it doesn't like it when the
+    // I really want to update it. Make is A LOT better, currently it doesn't like it when the
     // output is bigger than the source, plus this method is VERY lossy, basically it will only
     // take a little bit, I wan to take almost everything and average I think, though that might
     // not work
@@ -242,7 +242,7 @@ fn resize_image_simple(
 }
 
 fn fix_gif(frame: &Frame) -> Vec<ColourPixel> {
-    // This makes it so each pixel is seperate, currently it gets sent
+    // This makes it so each pixel is separate, currently it gets sent
     // [r,g,b,a,r,g,b,a,...,a] I want it to be [[r,g,b,a],[r,g,b,a],...,a]]
     // breaking them up into pixels
     let mut out: Vec<ColourPixel> = Vec::with_capacity(frame.buffer.len() / 4);
@@ -281,8 +281,8 @@ fn conv_frame_lum(frame: Vec<ColourPixel>) -> Vec<u8> {
 }
 
 fn conv_frame_lum_2(frame: Vec<ColourPixel>) -> Vec<u8> {
-    // This is how luminacnce is ACTUALLY calculated so maybe it should be the default (with the
-    // function name atleast) it is currently default with the command line arguments
+    // This is how luminance is ACTUALLY calculated so maybe it should be the default (with the
+    // function name at least) it is currently default with the command line arguments
     frame
         .iter()
         .map(|chunk| *chunk[0..2].iter().max().unwrap())
