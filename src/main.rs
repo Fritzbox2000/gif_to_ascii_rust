@@ -1,6 +1,6 @@
 use clap::Parser;
-use gif::{self, Decoder, Frame};
-use image::*;
+use image::codecs::gif::GifDecoder;
+use image::{AnimationDecoder, Frame, Frames, ImageDecoder};
 use std::{fs::File, thread, time};
 /// A simple program for converting gifs to ascii art
 #[derive(Parser, Debug)]
@@ -93,33 +93,28 @@ fn main_loop(args: Args) {
     let mut last_frame_height: u16 = 0;
 
     let mut gif_decoded: Vec<Frame> = Vec::with_capacity(frames.len());
-    while let Some(frame) = decoder.read_next_frame().unwrap() {
-        // This is an attempt to move away from streaming the bits in, which might have been
-        // causing problems but I'm not really sure that it was, technically increases the time it
-        // takes but it's negligible I suppose
-        gif_decoded.push(frame.clone());
+    for frame in decoder.into_frames() {
+        gif_decoded.push(frame.unwrap().clone());
     }
 
     for frame in gif_decoded.iter() {
         let mut fixed_frame = fix_gif(frame);
-
         let (width, height) = get_dimensions(frame);
-        delay = frame.delay;
-        println!("{}", frame.interlaced); // Maybe it's frame interlacing
-        if last_frame_height != 0 {
-            fixed_frame = calc_next_frame(
-                &fixed_frame,
-                width,
-                frame.top,
-                frame.left,
-                &last_frame,
-                last_frame_width,
-            );
-        } else {
-            last_frame_height = height;
-            last_frame_width = width;
-        }
-
+        //delay = frame.delay;
+        // if last_frame_height != 0 {
+        //     fixed_frame = calc_next_frame(
+        //         &fixed_frame,
+        //         width,
+        //         frame.top,
+        //         frame.left,
+        //         &last_frame,
+        //         last_frame_width,
+        //     );
+        // } else {
+        //     last_frame_height = height;
+        //     last_frame_width = width;
+        // }
+        //
         last_frame = fixed_frame.clone();
 
         let lum = match args.luminance {
@@ -152,12 +147,10 @@ fn main_loop(args: Args) {
     }
 }
 /// This is the main important function at the moment, maybe name should reflect that better?
-fn open_gif(args: &Args) -> Decoder<File> {
-    let mut decoder = gif::DecodeOptions::new();
-    decoder.set_color_output(gif::ColorOutput::RGBA);
+fn open_gif(args: &Args) -> GifDecoder<File> {
     let file = File::open(args.file.clone()).unwrap();
 
-    return decoder.read_info(file).unwrap(); // Some more setup
+    GifDecoder::new(file).unwrap()
 }
 
 fn new_lines(string: String, width: usize) -> String {
@@ -237,10 +230,11 @@ fn resize_image_simple(
     new_image
 }
 
-fn fix_gif(frame: &Frame) -> Vec<ColourPixel> {
+fn fix_gif(mut frame: Frame) -> Vec<ColourPixel> {
     // This makes it so each pixel is separate, currently it gets sent
     // [r,g,b,a,r,g,b,a,...,a] I want it to be [[r,g,b,a],[r,g,b,a],...,a]]
     // breaking them up into pixels
+    println!("I'm up to here {}", frame.buffer.len());
     let mut out: Vec<ColourPixel> = Vec::with_capacity(frame.buffer.len() / 4);
     for pixel in frame.buffer.chunks(4) {
         let mut array: ColourPixel = [0; 4];
