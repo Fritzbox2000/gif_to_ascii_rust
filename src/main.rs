@@ -191,13 +191,9 @@ fn resize_image_simple(
     // take a little bit, I wan to take almost everything and average I think, though that might
     // not work
     let x_factor: f32 = in_width as f32 / out_width as f32;
-    //println!("{}", x_factor);
     let y_factor: f32 = in_height as f32 / out_height as f32;
-    //println!("{}", y_factor);
     let mut new_image = Vec::with_capacity(out_width * out_height);
 
-    // println!("Frame size {}", frame.len());
-    // println!("Input est size {}", in_width * in_height);
     for y in 0..out_height {
         for x in 0..out_width {
             // Calculate the corresponding pixel coordinates in the original image
@@ -215,7 +211,6 @@ fn resize_image_simple(
             if index_br > frame.len() {
                 index_br = index_tr;
             }
-            //println!("{} | {} | {} | {}", index_tl, index_tr, index_bl, index_br);
             // Calculate the average value of the neighboring pixels
             let avg_value: u8 = ((frame[index_tl] as u16
                 + frame[index_tr] as u16
@@ -230,13 +225,12 @@ fn resize_image_simple(
     new_image
 }
 
-fn fix_gif(mut frame: Frame) -> Vec<ColourPixel> {
+fn fix_gif(frame: &Frame) -> Vec<ColourPixel> {
     // This makes it so each pixel is separate, currently it gets sent
     // [r,g,b,a,r,g,b,a,...,a] I want it to be [[r,g,b,a],[r,g,b,a],...,a]]
     // breaking them up into pixels
-    println!("I'm up to here {}", frame.buffer.len());
-    let mut out: Vec<ColourPixel> = Vec::with_capacity(frame.buffer.len() / 4);
-    for pixel in frame.buffer.chunks(4) {
+    let mut out: Vec<ColourPixel> = Vec::with_capacity(frame.buffer().len() / 4);
+    for pixel in frame.buffer().chunks(4) {
         let mut array: ColourPixel = [0; 4];
         array.copy_from_slice(pixel);
         out.push(array);
@@ -280,7 +274,10 @@ fn conv_frame_lum_2(frame: Vec<ColourPixel>) -> Vec<u8> {
 }
 
 fn get_dimensions(frame: &Frame) -> (u16, u16) {
-    (frame.width, frame.height)
+    (
+        frame.buffer().width().try_into().unwrap(),
+        frame.buffer().height().try_into().unwrap(),
+    )
 }
 
 fn get_screen_dimensions() -> (usize, usize) {
