@@ -1,6 +1,6 @@
 use clap::Parser;
 use image::codecs::gif::GifDecoder;
-use image::{AnimationDecoder, Frame, Frames, ImageDecoder};
+use image::{AnimationDecoder, Frame};
 use std::{fs::File, thread, time};
 /// A simple program for converting gifs to ascii art
 #[derive(Parser, Debug)]
@@ -74,7 +74,7 @@ fn calc_next_frame(
     out_frame
 }
 fn main_loop(args: Args) {
-    let mut decoder = open_gif(&args);
+    let decoder = open_gif(&args);
     let mut frames: Vec<String> = vec![];
 
     let (screen_width, screen_height) = get_screen_dimensions();
@@ -87,10 +87,10 @@ fn main_loop(args: Args) {
         None => screen_height,
     };
 
-    let mut delay: u16 = 0;
+    let mut delay: u32 = 0;
     let mut last_frame: Vec<ColourPixel> = vec![];
-    let mut last_frame_width: u16 = 0;
-    let mut last_frame_height: u16 = 0;
+    let last_frame_width: u16 = 0;
+    let last_frame_height: u16 = 0;
 
     let mut gif_decoded: Vec<Frame> = Vec::with_capacity(frames.len());
     for frame in decoder.into_frames() {
@@ -98,23 +98,12 @@ fn main_loop(args: Args) {
     }
 
     for frame in gif_decoded.iter() {
-        let mut fixed_frame = fix_gif(frame);
-        let (width, height) = get_dimensions(frame);
-        //delay = frame.delay;
-        // if last_frame_height != 0 {
-        //     fixed_frame = calc_next_frame(
-        //         &fixed_frame,
-        //         width,
-        //         frame.top,
-        //         frame.left,
-        //         &last_frame,
-        //         last_frame_width,
-        //     );
-        // } else {
-        //     last_frame_height = height;
-        //     last_frame_width = width;
-        // }
-        //
+        let fixed_frame = fix_gif(frame);
+        let (_width, _height) = get_dimensions(frame);
+        let last_frame_width = _width;
+        let last_frame_height = _height;
+        (delay, _) = dbg!(frame.delay().numer_denom_ms());
+
         last_frame = fixed_frame.clone();
 
         let lum = match args.luminance {
@@ -129,6 +118,8 @@ fn main_loop(args: Args) {
             out_width,
             out_height,
         );
+        dbg!(last_frame_width);
+        dbg!(last_frame_height);
 
         frames.push(new_lines(
             String::from_utf8(conv_lum_char(resized)).unwrap(),
@@ -139,7 +130,7 @@ fn main_loop(args: Args) {
         text: frames,
         frame_time: time::Duration::from_millis(match args.time {
             Some(x) => x,
-            None => delay as u64 * 10,
+            None => delay as u64,
         }),
     };
     if args.print {
@@ -168,11 +159,11 @@ fn new_lines(string: String, width: usize) -> String {
 // ( in_h + p - k_h ) / (s + 1) = o
 //
 fn resize_image_convolution(
-    frame: &[u8],
-    in_width: i32,
-    in_height: i32,
-    conv_width: i32,
-    conv_height: i32,
+    _frame: &[u8],
+    _in_width: i32,
+    _in_height: i32,
+    _conv_width: i32,
+    _conv_height: i32,
 ) -> Vec<u8> {
     //let new_vec: Vec<u8> = vec![];
     todo!();
